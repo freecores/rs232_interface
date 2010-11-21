@@ -1,2 +1,13 @@
-Initial Commit
-SVN test 2020/09/25
+
+About this project:
+
+	This is a small UART to uPC interface. Ideal to use with soft/hard processors in a FPGA project.
+
+Change Log:
+
+	2010/11/21:
+	- Included main file.
+
+	2020/09/25:
+	- Initial Commit.
+	- SVN test.
