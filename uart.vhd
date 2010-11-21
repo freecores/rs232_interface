@@ -11,21 +11,21 @@ use IEEE.STD_LOGIC_UNSIGNED.ALL;
 entity uart is
 generic (
 	CLK_FREQ	: integer := 50;		-- Main frequency (MHz)
-	SER_FREQ	: integer := 9600	-- Baud rate (bps)
+	SER_FREQ	: integer := 9600		-- Baud rate (bps)
 );
 port (
 	-- Control
-	clk			: in	std_logic;
-	rst			: in	std_logic;
+	clk			: in	std_logic;		-- Main clock
+	rst			: in	std_logic;		-- Main reset
 	-- External Interface
-	rx			: in	std_logic;
-	tx			: out	std_logic;
+	rx			: in	std_logic;		-- RS232 received serial data
+	tx			: out	std_logic;		-- RS232 transmitted serial data
 	-- uPC Interface
-	tx_req		: in	std_logic;
-	tx_end		: out	std_logic;
-	tx_data		: in	std_logic_vector(7 downto 0);
-	rx_ready	: out	std_logic;
-	rx_data		: out	std_logic_vector(7 downto 0)
+	tx_req		: in	std_logic;						-- Request SEND of data
+	tx_end		: out	std_logic;						-- Data SENDED
+	tx_data		: in	std_logic_vector(7 downto 0);	-- Data to transmit
+	rx_ready	: out	std_logic;						-- Received data ready to uPC read
+	rx_data		: out	std_logic_vector(7 downto 0)	-- Received data 
 );
 end uart;
 
