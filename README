@@ -3,6 +3,15 @@ About this project:
 
 	This is a small UART to uPC interface. Ideal to use with soft/hard processors in a FPGA project.
 
+Recommended Tools:
+
+	Text Editor (use TAB of 4 SPACES and monospaced font):
+		- Notepad++
+		- gvim
+	Simulation Tool:
+		- iSim
+		- Modelsim
+
 Change Log:
 
 	2010/11/21:
