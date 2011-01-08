@@ -40,39 +40,40 @@ architecture Behavioral of uart is
 	constant RST_LVL	:	std_logic := '1';
 
 	-- Types
-	type state is (idle,data,parity,stop1,stop2);			-- Stop1 and Stop2 are inter frame gap
+	type state is (idle,data,parity,stop1,stop2);			-- Stop1 and Stop2 are inter frame gap signals
 
-	-- Signals
+	-- RX Signals
 	signal rx_fsm		:	state;							-- Control of reception
+	signal rx_clk_en	:	std_logic;						-- Received clock enable
+	signal rx_rcv_init	:	std_logic;						-- Start of reception
+	signal rx_par_bit	:	std_logic;						-- Calculated Parity bit
+	signal rx_data_tmp	:	std_logic_vector(7 downto 0);	-- Serial to parallel converter
+	signal rx_data_cnt	:	std_logic_vector(2 downto 0);	-- Count received bits
+
+	-- TX Signals
 	signal tx_fsm		:	state;							-- Control of transmission
-	signal clock_en		:	std_logic;						-- Internal clock enable
-
-	-- RX Data Temp
-	signal rx_par_bit	:	std_logic;
-	signal rx_data_tmp	:	std_logic_vector(7 downto 0);
-	signal rx_data_cnt	:	std_logic_vector(2 downto 0);
-
-	-- TX Data Temp
-	signal tx_par_bit	:	std_logic;
-	signal tx_data_tmp	:	std_logic_vector(7 downto 0);
-	signal tx_data_cnt	:	std_logic_vector(2 downto 0);
+	signal tx_clk_en	:	std_logic;						-- Transmited clock enable
+	signal tx_par_bit	:	std_logic;						-- Calculated Parity bit
+	signal tx_data_tmp	:	std_logic_vector(7 downto 0);	-- Parallel to serial converter
+	signal tx_data_cnt	:	std_logic_vector(2 downto 0);	-- Count transmited bits
 
 begin
 
-	clock_manager:process(clk)
+	tx_clk_gen:process(clk)
 		variable counter	:	integer range 0 to conv_integer((CLK_FREQ*1_000_000)/SER_FREQ-1);
 	begin
 		if clk'event and clk = '1' then
 			-- Normal Operation
 			if counter = (CLK_FREQ*1_000_000)/SER_FREQ-1 then
-				clock_en	<=	'1';
+				tx_clk_en	<=	'1';
 				counter		:=	0;
 			else
-				clock_en	<=	'0';
+				tx_clk_en	<=	'0';
 				counter		:=	counter + 1;
 			end if;
 			-- Reset condition
 			if rst = RST_LVL then
+				tx_clk_en	:=	'0';
 				counter		:=	0;
 			end if;
 		end if;
@@ -82,7 +83,7 @@ begin
 		variable data_cnt	: std_logic_vector(2 downto 0);
 	begin
 		if clk'event and clk = '1' then
-			if clock_en = '1' then
+			if tx_clk_en = '1' then
 				-- Default values
 				tx_end					<=	'0';
 				tx						<=	UART_IDLE;
@@ -140,17 +141,75 @@ begin
 		end if;
 	end process;
 
+	rx_start_detect:process(clk)
+		variable deb_buf	:	std_logic_vector(3 downto 0);
+		variable deb_val	:	std_logic;
+		variable deb_old	:	std_logic;
+	begin
+		if clk'event and clk = '1' then
+			-- Store previous debounce value
+			deb_old			:=	deb_val;
+			-- Debounce logic
+			if deb_buf = "0000" then
+				deb_val		:=	'0';
+			elsif deb_buf = "1111" then
+				deb_val		:=	'1';
+			end if;
+			-- Data storage to debounce
+			deb_buf			:=	deb_buf(2 downto 0) & rx;
+
+			-- Check RX idle state
+			if rx_fsm = idle then
+				-- Falling edge detection
+				if deb_old = '1' and deb_val = '0' then
+					rx_rcv_init	<=	'1';
+				end if;
+			-- Default assignments
+			else
+				rx_rcv_init		<=	'0';
+			end if;
+			-- Reset condition
+			if rst = RST_LVL then
+				deb_old			:=	'0';
+				deb_val			:=	'0';
+				deb_buf			<=	(others=>'0');
+				rx_rcv_init		<=	'0';
+			end if;
+		end if;
+	end if;
+
+
+	rx_clk_gen:process(clk)
+		variable counter	:	integer range 0 to conv_integer((CLK_FREQ*1_000_000)/SER_FREQ-1);
+	begin
+		if clk'event and clk = '1' then
+			-- Normal Operation
+			if counter = (CLK_FREQ*1_000_000)/SER_FREQ-1 and rx_rcv_init = '1' then
+				rx_clk_en	<=	'1';
+				counter		:=	0;
+			else
+				rx_clk_en	<=	'0';
+				counter		:=	counter + 1;
+			end if;
+			-- Reset condition
+			if rst = RST_LVL then
+				rx_clk_en	<=	'0';
+				counter		:=	0;
+			end if;
+		end if;
+	end process;
+
 	rx_proc:process(clk)
 	begin
 		if clk'event and clk = '1' then
-			if clock_en = '1' then
+			if rx_clk_en = '1' then
 				-- Default values
 				rx_ready		<=	'0';
 				-- FSM description
 				case rx_fsm is
 					-- Wait to transfer data
 					when idle =>
-						if rx = UART_START then
+						if rx_rcv_init = '1' then
 							rx_fsm		<=	data;
 						end if;
 						rx_par_bit		<=	'0';
