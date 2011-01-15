@@ -47,6 +47,7 @@ architecture Behavioral of uart is
 	signal rx_clk_en	:	std_logic;						-- Received clock enable
 	signal rx_rcv_init	:	std_logic;						-- Start of reception
 	signal rx_par_bit	:	std_logic;						-- Calculated Parity bit
+	signal rx_data_deb	:	std_logic;						-- Debounce RX data
 	signal rx_data_tmp	:	std_logic_vector(7 downto 0);	-- Serial to parallel converter
 	signal rx_data_cnt	:	std_logic_vector(2 downto 0);	-- Count received bits
 
@@ -73,7 +74,7 @@ begin
 			end if;
 			-- Reset condition
 			if rst = RST_LVL then
-				tx_clk_en	:=	'0';
+				tx_clk_en	<=	'0';
 				counter		:=	0;
 			end if;
 		end if;
@@ -141,42 +142,40 @@ begin
 		end if;
 	end process;
 
-	rx_start_detect:process(clk)
+	rx_debounceer:process(clk)
 		variable deb_buf	:	std_logic_vector(3 downto 0);
-		variable deb_val	:	std_logic;
-		variable deb_old	:	std_logic;
 	begin
 		if clk'event and clk = '1' then
-			-- Store previous debounce value
-			deb_old			:=	deb_val;
 			-- Debounce logic
 			if deb_buf = "0000" then
-				deb_val		:=	'0';
+				rx_data_deb		<=	'0';
 			elsif deb_buf = "1111" then
-				deb_val		:=	'1';
+				rx_data_deb		<=	'1';
 			end if;
 			-- Data storage to debounce
-			deb_buf			:=	deb_buf(2 downto 0) & rx;
+			deb_buf				:=	deb_buf(2 downto 0) & rx;
+		end if;
+	end process;
 
-			-- Check RX idle state
-			if rx_fsm = idle then
-				-- Falling edge detection
-				if deb_old = '1' and deb_val = '0' then
-					rx_rcv_init	<=	'1';
-				end if;
-			-- Default assignments
+	rx_start_detect:process(clk)
+		variable rx_data_old	:	std_logic;
+	begin
+		if clk'event and clk = '1' then
+			-- Falling edge detection
+			if rx_data_old = '1' and rx_data_deb = '0' then
+				rx_rcv_init		<=	'1';
 			else
 				rx_rcv_init		<=	'0';
 			end if;
+			-- Default assignments
+			rx_data_old			:=	rx_data_deb;
 			-- Reset condition
 			if rst = RST_LVL then
-				deb_old			:=	'0';
-				deb_val			:=	'0';
-				deb_buf			<=	(others=>'0');
+				rx_data_old		:=	'0';
 				rx_rcv_init		<=	'0';
 			end if;
 		end if;
-	end if;
+	end process;
 
 
 	rx_clk_gen:process(clk)
@@ -184,7 +183,7 @@ begin
 	begin
 		if clk'event and clk = '1' then
 			-- Normal Operation
-			if counter = (CLK_FREQ*1_000_000)/SER_FREQ-1 and rx_rcv_init = '1' then
+			if counter = (CLK_FREQ*1_000_000)/SER_FREQ-1 or rx_rcv_init = '1' then
 				rx_clk_en	<=	'1';
 				counter		:=	0;
 			else
@@ -202,14 +201,15 @@ begin
 	rx_proc:process(clk)
 	begin
 		if clk'event and clk = '1' then
+			-- Default values
+			rx_ready		<=	'0';
+			-- Enable on UART rate
 			if rx_clk_en = '1' then
-				-- Default values
-				rx_ready		<=	'0';
 				-- FSM description
 				case rx_fsm is
 					-- Wait to transfer data
 					when idle =>
-						if rx_rcv_init = '1' then
+						if rx_data_deb = UART_START then
 							rx_fsm		<=	data;
 						end if;
 						rx_par_bit		<=	'0';
