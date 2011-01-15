@@ -14,6 +14,11 @@ Recommended Tools:
 
 Change Log:
 
+	2011/01/15:
+	- Fixed bugs from RX of revision 10 of uart.vhd.
+	- Tested parity verification on RX.
+	- Tested parity generation on TX.
+
 	2011/01/08:
 	- Implemented asynchronous clocks.
 	- Implemented RX clock regenaration.
