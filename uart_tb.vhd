@@ -17,6 +17,7 @@ architecture Behavioral of uart_tb is
 	-- Constants
 	----------------------------------------------
 	constant MAIN_CLK_PER	:	time := 20 ns;		-- 50 MHz
+	constant MAIN_CLK     : integer := 50;
 	constant BAUD_RATE		:	integer := 9600;	-- Bits per Second
 	constant RST_LVL		:	std_logic := '1';	-- Active Level of Reset
 
@@ -34,7 +35,7 @@ architecture Behavioral of uart_tb is
 	-- uPC Interface
 	signal tx_req					:	std_logic;
 	signal tx_end					:	std_logic;
-	signal tx_data					:	std_logic_vector(7 downto 0);
+	signal tx_data					:	std_logic_vector(7 downto 0) := x"5A";
 	signal rx_ready					:	std_logic;
 	signal rx_data					:	std_logic_vector(7 downto 0);
 
@@ -60,7 +61,7 @@ begin
 		-- RS232/UART Configuration
 		par_en		=> par_en,					-- Parity bit enable
 		-- uPC Interface
-		tx_req		=> tx_req,					-- Request SEND of data
+		tx_req		=> '1',					-- Request SEND of data
 		tx_end		=> tx_end,					-- Data SENDED
 		tx_data		=> tx_data,					-- Data to transmit
 		rx_ready	=> rx_ready,				-- Received data ready to uPC read
@@ -86,6 +87,6 @@ begin
 
 	-- Reset generation
 	rst	<=	RST_LVL, not RST_LVL after MAIN_CLK_PER*5;
-
+   data_from_transceiver <= data_to_transceiver;
 end Behavioral;
 

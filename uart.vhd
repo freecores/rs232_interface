@@ -162,7 +162,7 @@ begin
 	begin
 		if clk'event and clk = '1' then
 			-- Falling edge detection
-			if rx_data_old = '1' and rx_data_deb = '0' then
+			if rx_data_old = '1' and rx_data_deb = '0' and rx_fsm = idle then
 				rx_rcv_init		<=	'1';
 			else
 				rx_rcv_init		<=	'0';
